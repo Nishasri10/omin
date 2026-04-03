@@ -1,0 +1,50 @@
+File name: /pos-omnichannel/pos-omnichannel/frontend/src/components/Inventory/Inventory.jsx
+
+Full code:
+import React, { useEffect } from 'react';
+import { useStore } from '../../store/useStore';
+import { fetchProducts } from '../../api/productApi';
+
+const Inventory = () => {
+    const { products, setProducts } = useStore();
+
+    useEffect(() => {
+        const getProducts = async () => {
+            const data = await fetchProducts();
+            setProducts(data);
+        };
+
+        getProducts();
+    }, [setProducts]);
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">Inventory Management</h1>
+            <table className="min-w-full border-collapse border border-gray-200">
+                <thead>
+                    <tr>
+                        <th className="border border-gray-300 p-2">Product Name</th>
+                        <th className="border border-gray-300 p-2">Price</th>
+                        <th className="border border-gray-300 p-2">Barcode</th>
+                        <th className="border border-gray-300 p-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {products.map((product) => (
+                        <tr key={product._id}>
+                            <td className="border border-gray-300 p-2">{product.name}</td>
+                            <td className="border border-gray-300 p-2">${product.price}</td>
+                            <td className="border border-gray-300 p-2">{product.barcode}</td>
+                            <td className="border border-gray-300 p-2">
+                                <button className="bg-blue-500 text-white px-2 py-1 rounded">Edit</button>
+                                <button className="bg-red-500 text-white px-2 py-1 rounded ml-2">Delete</button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+export default Inventory;

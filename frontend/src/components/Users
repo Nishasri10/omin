@@ -1,0 +1,53 @@
+import React, { useEffect } from 'react';
+import { useStore } from '../../store/useStore';
+import { fetchUsers, deleteUser } from '../../api/authApi';
+
+const UserManagement = () => {
+    const { users, setUsers } = useStore();
+
+    useEffect(() => {
+        const loadUsers = async () => {
+            const fetchedUsers = await fetchUsers();
+            setUsers(fetchedUsers);
+        };
+        loadUsers();
+    }, [setUsers]);
+
+    const handleDelete = async (userId) => {
+        await deleteUser(userId);
+        setUsers(users.filter(user => user._id !== userId));
+    };
+
+    return (
+        <div className="p-4">
+            <h1 className="text-2xl font-bold mb-4">User Management</h1>
+            <table className="min-w-full bg-white border border-gray-300">
+                <thead>
+                    <tr>
+                        <th className="border px-4 py-2">Username</th>
+                        <th className="border px-4 py-2">Role</th>
+                        <th className="border px-4 py-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.map(user => (
+                        <tr key={user._id}>
+                            <td className="border px-4 py-2">{user.username}</td>
+                            <td className="border px-4 py-2">{user.role}</td>
+                            <td className="border px-4 py-2">
+                                <button 
+                                    onClick={() => handleDelete(user._id)} 
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};
+
+export default UserManagement;
