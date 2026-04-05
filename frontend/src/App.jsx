@@ -1,23 +1,15 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import DashboardPage from './pages/DashboardPage';
-import PosPage from './pages/PosPage';
-import InventoryPage from './pages/InventoryPage';
-import UsersPage from './pages/UsersPage';
-import LoginPage from './pages/LoginPage';
+import { Routes, Route, Navigate } from "react-router-dom";
+import POS from "./pages/POS";
+import Dashboard from "./pages/Dashboard";
+import Login from "./pages/Login";
 
-const App = () => {
+export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/pos" element={<PosPage />} />
-        <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/users" element={<UsersPage />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/pos" element={<POS />} />
+      <Route path="/login" element={<Login />} />
+    </Routes>
   );
-};
-
-export default App;
+}
