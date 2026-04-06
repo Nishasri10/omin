@@ -1,20 +1,18 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import jwt from 'jsonwebtoken';
+import createError from 'http-errors';
+import User from '../models/User.js';
 
-const authMiddleware = async (req, res, next) => {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+export const protect = async (req, res, next) => {
+  let token = req.headers.authorization?.split(' ')[1];
+  if (!token) return next(createError(401, 'Authorization required'));
 
-    if (!token) {
-        return res.status(401).json({ message: 'Access denied. No token provided.' });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = await User.findById(decoded.id).select('-password');
-        next();
-    } catch (error) {
-        res.status(400).json({ message: 'Invalid token.' });
-    }
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(payload.id);
+    if (!user) return next(createError(401, 'User not found'));
+    req.user = user;
+    next();
+  } catch (error) {
+    next(createError(401, 'Invalid token'));
+  }
 };
-
-module.exports = authMiddleware;

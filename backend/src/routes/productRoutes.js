@@ -1,29 +1,13 @@
-const express = require('express');
-const { 
-    createProduct, 
-    getProducts, 
-    getProductById, 
-    updateProduct, 
-    deleteProduct 
-} = require('../controllers/productController');
-const { verifyToken } = require('../middleware/authMiddleware');
-const { isAdmin } = require('../middleware/roleMiddleware');
+import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
+import { authorize } from '../middleware/roleMiddleware.js';
+import { listProducts, createProduct, getProduct, updateProduct, deleteProduct } from '../controllers/productController.js';
 
 const router = express.Router();
-
-// Create a new product
-router.post('/', verifyToken, isAdmin, createProduct);
-
-// Get all products
-router.get('/', verifyToken, getProducts);
-
-// Get a product by ID
-router.get('/:id', verifyToken, getProductById);
-
-// Update a product by ID
-router.put('/:id', verifyToken, isAdmin, updateProduct);
-
-// Delete a product by ID
-router.delete('/:id', verifyToken, isAdmin, deleteProduct);
-
-module.exports = router;
+router.use(protect);
+router.get('/', listProducts);
+router.post('/', authorize('manager', 'super_admin'), createProduct);
+router.get('/:id', getProduct);
+router.put('/:id', authorize('manager', 'super_admin'), updateProduct);
+router.delete('/:id', authorize('manager', 'super_admin'), deleteProduct);
+export default router;

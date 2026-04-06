@@ -1,17 +1,10 @@
-const express = require('express');
-const { createOrder, getOrders, getOrderById } = require('../controllers/orderController');
-const { verifyToken } = require('../middleware/authMiddleware');
-const { isAdmin, isManager, isCashier } = require('../middleware/roleMiddleware');
+import express from 'express';
+import { protect } from '../middleware/authMiddleware.js';
+import { createOrder, listOrders } from '../controllers/orderController.js';
+import { authorize } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
-
-// Create a new order
-router.post('/', verifyToken, isCashier, createOrder);
-
-// Get all orders
-router.get('/', verifyToken, isManager, getOrders);
-
-// Get order by ID
-router.get('/:id', verifyToken, isManager, getOrderById);
-
-module.exports = router;
+router.use(protect);
+router.post('/', authorize('cashier', 'manager', 'super_admin'), createOrder);
+router.get('/', authorize('cashier', 'manager', 'super_admin'), listOrders);
+export default router;

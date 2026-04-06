@@ -1,31 +1,28 @@
-File name: backend/src/server.js
-
-const express = require('express');
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const cors = require('cors');
-const app = require('./app');
+import http from 'http';
+import dotenv from 'dotenv';
+import app from './app.js';
+import { connectDB } from './config/db.js';
+import { connectRedis } from './config/redis.js';
+import { initSocket } from './config/socket.js';
+import logger from './utils/logger.js';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
-.then(() => {
-    console.log('MongoDB connected');
-})
-.catch(err => {
-    console.error('MongoDB connection error:', err);
-});
+const startServer = async () => {
+  await connectDB();
+  await connectRedis();
 
-// Middleware
-app.use(cors());
+  const server = http.createServer(app);
+  initSocket(server);
 
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  server.listen(PORT, () => {
+    logger.info(`Backend listening on port ${PORT}`);
+  });
+};
+
+startServer().catch(error => {
+  logger.error(error);
+  process.exit(1);
 });
