@@ -2,22 +2,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchProducts } from '../services/api.js';
-import { getProducts, searchProducts } from '../services/productCatalog.js';
+import { getProducts, searchProducts, getNewArrivals, getTopRated, getTrendingProducts } from '../services/productCatalog.js';
 import { addToCart } from '../services/cartService.js';
 import { addToWishlist, getWishlistItems } from '../services/wishlistService.js';
 import BackButton from './BackButton.jsx';
 import PaymentModal from './PaymentModal.jsx';
+import CategoryBar from './CategoryBar.jsx';
+import toast from 'react-hot-toast';
 
 const ProductPage = () => {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [feedback, setFeedback] = useState('');
   const [wishlistMap, setWishlistMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [activeTab, setActiveTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState('default');
+  const itemsPerPage = 20;
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,7 +35,7 @@ const ProductPage = () => {
         setProducts(result.data);
       } catch (err) {
         console.log('Using demo products');
-        setError(err.response?.data?.message || 'Unable to load products from server. Showing demo products.');
+        setError('Showing demo products. Connect backend for real data.');
       } finally {
         setLoading(false);
       }
@@ -40,16 +46,24 @@ const ProductPage = () => {
 
   const allProducts = useMemo(() => {
     if (products.length > 0) return products;
-    return getProducts(); // Returns 120+ products
+    return getProducts();
   }, [products]);
 
-  const categories = useMemo(() => {
-    const uniqueCategories = Array.from(new Set(allProducts.map(product => product.category || 'Other')));
-    return ['All', ...uniqueCategories];
-  }, [allProducts]);
+  const newArrivals = useMemo(() => getNewArrivals(20), []);
+  const topRated = useMemo(() => getTopRated(20), []);
+  const trending = useMemo(() => getTrendingProducts(20), []);
 
-  const filtered = useMemo(() => {
-    let result = allProducts;
+  const getDisplayProducts = () => {
+    let result = [];
+    if (activeTab === 'all') {
+      result = allProducts;
+    } else if (activeTab === 'new') {
+      result = newArrivals;
+    } else if (activeTab === 'top') {
+      result = topRated;
+    } else if (activeTab === 'trending') {
+      result = trending;
+    }
     
     if (selectedCategory !== 'All') {
       result = result.filter(product => product.category === selectedCategory);
@@ -63,28 +77,42 @@ const ProductPage = () => {
       );
     }
     
+    if (sortBy === 'price_low') {
+      result = [...result].sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'price_high') {
+      result = [...result].sort((a, b) => b.price - a.price);
+    } else if (sortBy === 'rating') {
+      result = [...result].sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
+    } else if (sortBy === 'name') {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
     return result;
-  }, [allProducts, search, selectedCategory]);
+  };
 
-  const isUsingDemo = products.length === 0;
+  const filtered = useMemo(() => getDisplayProducts(), [allProducts, search, selectedCategory, activeTab, sortBy]);
+  
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage]);
+  
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
 
   const handleAddToCart = (product) => {
     addToCart(product);
-    setFeedback(`✅ Added ${product.name} to cart.`);
-    setTimeout(() => setFeedback(''), 2500);
+    toast.success(`✅ Added ${product.name} to cart!`);
   };
 
   const handleAddToWishlist = (product) => {
     addToWishlist(product);
     setWishlistMap(prev => ({ ...prev, [product._id]: true }));
-    setFeedback(`❤️ Saved ${product.name} to wishlist.`);
-    setTimeout(() => setFeedback(''), 2500);
+    toast.success(`❤️ Saved ${product.name} to wishlist!`);
   };
 
   const handleBuyNow = (product) => {
     if (product.quantity === 0) {
-      setFeedback(`❌ ${product.name} is out of stock!`);
-      setTimeout(() => setFeedback(''), 2500);
+      toast.error(`❌ ${product.name} is out of stock!`);
       return;
     }
     setSelectedProduct(product);
@@ -92,16 +120,14 @@ const ProductPage = () => {
   };
 
   const handlePaymentComplete = (paymentData) => {
-    // Add to cart first
     addToCart(selectedProduct);
     
-    // Save order to localStorage
     const orders = JSON.parse(localStorage.getItem('posOrders') || '[]');
     orders.unshift({
       _id: 'order_' + Date.now(),
       orderNumber: 'ORD-' + String(orders.length + 1001),
-      pricing: { total: selectedProduct.price },
-      status: 'pending',
+      pricing: { total: selectedProduct.price, subtotal: selectedProduct.price, tax: selectedProduct.price * 0.1, shipping: 5 },
+      status: 'confirmed',
       items: [{ ...selectedProduct, quantity: 1 }],
       createdAt: new Date().toISOString(),
       paymentMethod: paymentData.method,
@@ -110,9 +136,9 @@ const ProductPage = () => {
     });
     localStorage.setItem('posOrders', JSON.stringify(orders));
     
-    setFeedback(`🎉 Order placed successfully! Transaction ID: ${paymentData.transactionId}`);
-    setTimeout(() => setFeedback(''), 5000);
+    toast.success(`🎉 Order placed successfully! Transaction ID: ${paymentData.transactionId}`);
     setShowPayment(false);
+    navigate('/orders');
   };
 
   const handleView = (productId) => navigate(`/product/${productId}`);
@@ -121,7 +147,7 @@ const ProductPage = () => {
     return (
       <div className="min-h-screen bg-slate-100 py-8">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="rounded-[2rem] bg-white p-8 text-center shadow-xl">
+          <div className="rounded-2xl bg-white p-8 text-center shadow-xl">
             <div className="animate-pulse">
               <div className="h-4 bg-slate-200 rounded w-1/2 mx-auto mb-4"></div>
               <p className="text-slate-600">Loading {allProducts.length} products...</p>
@@ -136,7 +162,7 @@ const ProductPage = () => {
     <div className="min-h-screen bg-slate-100 py-8">
       <div className="mx-auto max-w-7xl px-6">
         {/* Header Section */}
-        <div className="mb-6 flex flex-col gap-4 rounded-[2rem] bg-white p-8 shadow-xl sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 rounded-2xl bg-white p-8 shadow-xl sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="mb-4">
               <BackButton fallback="/dashboard" label="← Back to dashboard" />
@@ -152,54 +178,78 @@ const ProductPage = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="🔍 Search by name, brand, or SKU..."
-              className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-900 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200"
             />
           </div>
         </div>
 
-        {/* Category Filters */}
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          {categories.map(category => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                selectedCategory === category 
-                  ? 'bg-slate-900 text-white shadow-lg' 
-                  : 'bg-white text-slate-700 shadow-sm hover:bg-slate-100'
-              }`}
+        {/* Tabs Section */}
+        <div className="mb-6 flex gap-2 border-b border-slate-200">
+          <button
+            onClick={() => { setActiveTab('all'); setCurrentPage(1); }}
+            className={`px-6 py-3 font-semibold transition ${activeTab === 'all' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            🔥 All Products
+          </button>
+          <button
+            onClick={() => { setActiveTab('new'); setCurrentPage(1); }}
+            className={`px-6 py-3 font-semibold transition ${activeTab === 'new' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            🆕 New Arrivals
+          </button>
+          <button
+            onClick={() => { setActiveTab('top'); setCurrentPage(1); }}
+            className={`px-6 py-3 font-semibold transition ${activeTab === 'top' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            ⭐ Top Rated
+          </button>
+          <button
+            onClick={() => { setActiveTab('trending'); setCurrentPage(1); }}
+            className={`px-6 py-3 font-semibold transition ${activeTab === 'trending' ? 'border-b-2 border-slate-900 text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            📈 Trending
+          </button>
+        </div>
+
+        {/* Sort and Filter Bar */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <CategoryBar selectedCategory={selectedCategory} onSelectCategory={setSelectedCategory} />
+          
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-slate-500">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 focus:outline-none"
             >
-              {category} {category !== 'All' && `(${allProducts.filter(p => p.category === category).length})`}
-            </button>
-          ))}
+              <option value="default">Default</option>
+              <option value="price_low">Price: Low to High</option>
+              <option value="price_high">Price: High to Low</option>
+              <option value="rating">Highest Rated</option>
+              <option value="name">Name A-Z</option>
+            </select>
+          </div>
         </div>
 
         {/* Demo Notice */}
-        {isUsingDemo && !error && (
-          <div className="mb-6 rounded-[2rem] bg-sky-50 px-6 py-4 text-sky-900 shadow-sm border border-sky-200">
+        {products.length === 0 && !error && (
+          <div className="mb-6 rounded-xl bg-sky-50 px-6 py-4 text-sky-900 shadow-sm border border-sky-200">
             <p className="text-sm flex items-center gap-2">
               <span>✨</span> 
-              Showing <strong>{allProducts.length} demo products</strong> with Lorem Picsum images. 
-              Connect your backend for real products.
+              Showing <strong>{allProducts.length} demo products</strong>. Connect your backend for real products.
             </p>
           </div>
         )}
         
         {error && (
-          <div className="mb-6 rounded-2xl bg-red-50 px-5 py-4 text-red-700 shadow-sm border border-red-200">
+          <div className="mb-6 rounded-xl bg-amber-50 px-5 py-4 text-amber-700 shadow-sm border border-amber-200">
             ⚠️ {error}
           </div>
         )}
-        
-        {feedback && (
-          <div className="mb-6 rounded-2xl bg-emerald-50 px-5 py-4 text-emerald-700 shadow-sm animate-in fade-in slide-in-from-top-2 border border-emerald-200">
-            {feedback}
-          </div>
-        )}
 
-        {/* Products Grid - 100+ Products */}
-        {filtered.length === 0 ? (
-          <div className="col-span-full rounded-[2rem] bg-white p-12 text-center shadow-xl">
+        {/* Products Grid */}
+        {paginatedProducts.length === 0 ? (
+          <div className="rounded-2xl bg-white p-12 text-center shadow-xl">
             <div className="text-6xl mb-4">🔍</div>
             <p className="text-xl font-semibold text-slate-900">No products found</p>
             <p className="mt-3 text-slate-600">
@@ -209,23 +259,22 @@ const ProductPage = () => {
               onClick={() => {
                 setSearch('');
                 setSelectedCategory('All');
+                setActiveTab('all');
               }}
-              className="mt-4 rounded-3xl bg-slate-900 px-6 py-2 text-white hover:bg-slate-800"
+              className="mt-4 rounded-xl bg-slate-900 px-6 py-2 text-white hover:bg-slate-800"
             >
               Clear Filters
             </button>
           </div>
         ) : (
           <>
-            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {filtered.map((product, index) => {
-                // Generate unique Lorem Picsum image for each product
-                const imageId = (parseInt(product._id.split('_')[1]) || index) + 100;
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {paginatedProducts.map((product, index) => {
+                const imageId = (parseInt(product._id.split('_')[1]) || index) % 1000;
                 const imageUrl = `https://picsum.photos/id/${imageId}/400/300`;
                 
                 return (
                   <div key={product._id} className="group overflow-hidden rounded-2xl bg-white shadow-xl transition hover:-translate-y-1 hover:shadow-2xl">
-                    {/* Product Image */}
                     <div className="relative h-56 overflow-hidden cursor-pointer" onClick={() => handleView(product._id)}>
                       <img 
                         src={imageUrl} 
@@ -254,7 +303,6 @@ const ProductPage = () => {
                       )}
                     </div>
                     
-                    {/* Product Info */}
                     <div className="p-5">
                       <div className="mb-2 flex items-center justify-between">
                         <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
@@ -284,30 +332,29 @@ const ProductPage = () => {
                         <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                           product.quantity > 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'
                         }`}>
-                          {product.quantity > 0 ? `${product.quantity} in stock` : 'Sold out'}
+                          {product.quantity > 0 ? `${product.quantity} left` : 'Sold out'}
                         </span>
                       </div>
                       
-                      {/* Action Buttons */}
                       <div className="mt-4 flex gap-2">
                         <button 
                           onClick={() => handleAddToCart(product)} 
                           disabled={product.quantity === 0}
-                          className="flex-1 rounded-full bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          className="flex-1 rounded-xl bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                         >
                           🛒 Add
                         </button>
                         <button 
                           onClick={() => handleBuyNow(product)} 
                           disabled={product.quantity === 0}
-                          className="flex-1 rounded-full bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                          className="flex-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                         >
                           💳 Buy
                         </button>
                         <button
                           onClick={() => handleAddToWishlist(product)}
                           disabled={wishlistMap[product._id]}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-2.5 text-lg font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-lg font-semibold text-slate-900 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                           title={wishlistMap[product._id] ? 'In Wishlist' : 'Add to Wishlist'}
                         >
                           {wishlistMap[product._id] ? '❤️' : '♡'}
@@ -319,26 +366,63 @@ const ProductPage = () => {
               })}
             </div>
             
-            {/* Pagination Info */}
-            <div className="mt-8 text-center">
-              <p className="text-sm text-slate-500">
-                Showing <span className="font-semibold text-slate-900">{filtered.length}</span> of{' '}
-                <span className="font-semibold text-slate-900">{allProducts.length}</span> products
-              </p>
-              {search && (
-                <button 
-                  onClick={() => setSearch('')}
-                  className="mt-2 text-sm text-sky-600 hover:text-sky-700"
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-8 flex justify-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 disabled:opacity-50 hover:bg-slate-50"
                 >
-                  Clear search
+                  ← Previous
                 </button>
-              )}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`rounded-xl px-4 py-2 transition ${
+                          currentPage === pageNum
+                            ? 'bg-slate-900 text-white'
+                            : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-slate-700 disabled:opacity-50 hover:bg-slate-50"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+            
+            <div className="mt-4 text-center">
+              <p className="text-sm text-slate-500">
+                Showing <span className="font-semibold text-slate-900">{paginatedProducts.length}</span> of{' '}
+                <span className="font-semibold text-slate-900">{filtered.length}</span> products
+              </p>
             </div>
           </>
         )}
       </div>
 
-      {/* Payment Modal */}
       {showPayment && selectedProduct && (
         <PaymentModal
           total={selectedProduct.price}
