@@ -1,3 +1,4 @@
+// src/components/LoginScreen.jsx
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Mail, Lock, Eye, EyeOff } from 'lucide-react';
@@ -14,10 +15,14 @@ const LoginScreen = ({ onLogin }) => {
     event.preventDefault();
     setIsLoading(true);
     
-    // Simulate login (in production, connect to backend)
+    // Simulate API call
     setTimeout(() => {
       if (email && password) {
-        const user = { name: email.split('@')[0], email: email, role: 'admin' };
+        const user = { 
+          name: email.split('@')[0], 
+          email: email, 
+          role: 'admin' 
+        };
         localStorage.setItem('posToken', 'demo-token-12345');
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('userName', user.name);
@@ -32,10 +37,10 @@ const LoginScreen = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-900 via-secondary-900 to-accent-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 p-4">
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-primary-500/20 blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-secondary-500/20 blur-3xl"></div>
+        <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl"></div>
       </div>
       
       <div className="relative w-full max-w-md">
@@ -89,7 +94,7 @@ const LoginScreen = ({ onLogin }) => {
             <button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-primary-500 to-secondary-500 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/30 disabled:opacity-50"
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-50"
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
@@ -98,6 +103,9 @@ const LoginScreen = ({ onLogin }) => {
           <div className="mt-6 text-center">
             <p className="text-sm text-white/70">
               Demo credentials: any email/password
+            </p>
+            <p className="text-xs text-white/50 mt-2">
+              Try: admin@retailpos.com / anything
             </p>
           </div>
           
