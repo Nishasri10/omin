@@ -1,13 +1,12 @@
-// CartPage.jsx - Enhanced with buy now and payment
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import BackButton from './BackButton.jsx';
-import { getCartItems, removeFromCart, updateCartQuantity, getCartTotal, clearCart } from '../services/cartService.js';
-import PaymentModal from './PaymentModal.jsx';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trash2, Plus, Minus, ShoppingBag, CreditCard } from 'lucide-react';
+import { getCartItems, removeFromCart, updateCartQuantity, getCartTotal, clearCart } from '../services/cartService';
+import toast from 'react-hot-toast';
 
 const CartPage = () => {
   const [items, setItems] = useState([]);
-  const [showPayment, setShowPayment] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setItems(getCartItems());
@@ -22,50 +21,29 @@ const CartPage = () => {
 
   const handleCheckout = () => {
     if (items.length > 0) {
-      setShowPayment(true);
+      toast.success('Proceeding to checkout...');
+      navigate('/checkout');
     }
   };
 
-  const handlePaymentComplete = (paymentData) => {
-    // Save order
-    const orders = JSON.parse(localStorage.getItem('posOrders') || '[]');
-    orders.push({
-      _id: 'order_' + Date.now(),
-      orderNumber: 'ORD-' + String(orders.length + 1001),
-      pricing: { total: getCartTotal(items) },
-      status: 'pending',
-      items: items.map(item => ({ ...item, quantity: item.quantity })),
-      createdAt: new Date().toISOString(),
-      paymentMethod: paymentData.method,
-      transactionId: paymentData.transactionId
-    });
-    localStorage.setItem('posOrders', JSON.stringify(orders));
-    
-    // Clear cart
-    clearCart();
-    setItems([]);
-    setShowPayment(false);
-    alert('Order placed successfully!');
-  };
-
   const total = getCartTotal(items);
+  const subtotal = total;
+  const tax = total * 0.1;
+  const shipping = total > 100 ? 0 : 10;
+  const grandTotal = subtotal + tax + shipping;
 
-  if (items.length === 0 && !showPayment) {
+  if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-100 py-10">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-10">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-8 rounded-[2rem] bg-white p-6 shadow-xl">
-            <BackButton fallback="/products" label="Back to products" />
-            <div className="mt-5">
-              <h1 className="text-3xl font-semibold text-slate-900">Your Cart</h1>
-              <p className="text-sm text-slate-500">Review the items you saved and proceed to checkout.</p>
+          <div className="rounded-2xl bg-white p-12 text-center shadow-xl">
+            <div className="inline-flex items-center justify-center rounded-full bg-gray-100 p-4 mb-4">
+              <ShoppingBag className="h-12 w-12 text-gray-400" />
             </div>
-          </div>
-          <div className="rounded-[2rem] bg-white p-8 text-center shadow-xl">
-            <p className="text-xl font-semibold text-slate-900">Your cart is empty.</p>
-            <p className="mt-3 text-slate-600">Add products from the catalog to see them here.</p>
-            <Link to="/products" className="mt-6 inline-block rounded-3xl bg-slate-900 px-6 py-3 text-white hover:bg-slate-800">
-              Browse Products
+            <h1 className="text-2xl font-semibold text-gray-900">Your cart is empty</h1>
+            <p className="mt-3 text-gray-600">Looks like you haven't added any items to your cart yet.</p>
+            <Link to="/products" className="mt-6 inline-block rounded-xl bg-gradient-to-r from-primary-600 to-secondary-600 px-6 py-3 text-white font-semibold hover:shadow-lg transition-all">
+              Start Shopping
             </Link>
           </div>
         </div>
@@ -74,93 +52,95 @@ const CartPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 py-10">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mb-8 flex flex-col gap-4 rounded-[2rem] bg-white p-6 shadow-xl sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <BackButton fallback="/products" label="Back to products" />
-            <h1 className="mt-4 text-3xl font-semibold text-slate-900">Your Cart</h1>
-            <p className="text-sm text-slate-500">You have {items.length} item(s) in your cart.</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-10">
+      <div className="mx-auto max-w-7xl px-6">
+        <h1 className="mb-8 text-3xl font-bold text-gray-900">Shopping Cart</h1>
+        
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Cart Items */}
+          <div className="lg:col-span-2 space-y-4">
+            {items.map(item => (
+              <div key={item._id} className="flex gap-4 rounded-2xl bg-white p-4 shadow-lg">
+                <img 
+                  src={`https://picsum.photos/seed/${item._id}/100/100`} 
+                  alt={item.name}
+                  className="h-24 w-24 rounded-xl object-cover"
+                />
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                      <p className="text-sm text-gray-500">{item.category}</p>
+                    </div>
+                    <button onClick={() => handleRemove(item._id)} className="text-gray-400 hover:text-red-500">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleQuantityChange(item._id, item.quantity - 1)}
+                        className="rounded-lg border border-gray-200 p-1 hover:bg-gray-50"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="w-12 text-center font-semibold">{item.quantity}</span>
+                      <button
+                        onClick={() => handleQuantityChange(item._id, item.quantity + 1)}
+                        className="rounded-lg border border-gray-200 p-1 hover:bg-gray-50"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <span className="text-lg font-bold text-primary-600">${(item.price * item.quantity).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-[2rem] bg-white p-6 shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm text-slate-700">
-                <thead className="border-b border-slate-200 text-slate-900">
-                  <tr>
-                    <th className="px-4 py-3">Product</th>
-                    <th className="px-4 py-3">Price</th>
-                    <th className="px-4 py-3">Qty</th>
-                    <th className="px-4 py-3">Total</th>
-                    <th className="px-4 py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(item => (
-                    <tr key={item._id} className="border-b border-slate-200">
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={`https://picsum.photos/seed/${item._id}_cart/50/50`} 
-                            alt={item.name}
-                            className="h-12 w-12 rounded-xl object-cover"
-                          />
-                          <div>
-                            <p className="font-semibold text-slate-900">{item.name}</p>
-                            <p className="text-sm text-slate-500">{item.category}</p>
-                          </div>
-                        </div>
-                       </td>
-                      <td className="px-4 py-4">${item.price.toFixed(2)}</td>
-                      <td className="px-4 py-4">
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={e => handleQuantityChange(item._id, Number(e.target.value))}
-                          className="w-20 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900"
-                        />
-                       </td>
-                      <td className="px-4 py-4">${(item.price * item.quantity).toFixed(2)}</td>
-                      <td className="px-4 py-4">
-                        <button onClick={() => handleRemove(item._id)} className="rounded-2xl bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
-                          Remove
-                        </button>
-                       </td>
-                     </tr>
-                  ))}
-                </tbody>
-               </table>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 rounded-[2rem] bg-white p-6 text-slate-700 shadow-xl sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Cart total</p>
-              <p className="mt-1 text-3xl font-semibold text-slate-900">${total.toFixed(2)}</p>
-              <p className="mt-1 text-xs text-slate-500">Including taxes and shipping</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <button onClick={handleClear} className="rounded-3xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-50">
-                Clear cart
+          
+          {/* Order Summary */}
+          <div className="lg:col-span-1">
+            <div className="rounded-2xl bg-white p-6 shadow-lg sticky top-24">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">Order Summary</h2>
+              <div className="space-y-3 border-b border-gray-200 pb-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-semibold">${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tax (10%)</span>
+                  <span className="font-semibold">${tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Shipping</span>
+                  <span className="font-semibold">{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span className="text-primary-600">${grandTotal.toFixed(2)}</span>
+              </div>
+              <button
+                onClick={handleCheckout}
+                className="mt-6 w-full rounded-xl bg-gradient-to-r from-primary-600 to-secondary-600 py-3 font-semibold text-white transition-all hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <CreditCard className="h-5 w-5" />
+                Proceed to Checkout
               </button>
-              <button onClick={handleCheckout} className="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                Proceed to Checkout →
+              <button
+                onClick={handleClear}
+                className="mt-3 w-full rounded-xl border border-gray-200 py-3 font-semibold text-gray-600 transition-all hover:bg-gray-50"
+              >
+                Clear Cart
               </button>
+              <Link to="/products" className="mt-3 block text-center text-sm text-primary-600 hover:underline">
+                Continue Shopping →
+              </Link>
             </div>
           </div>
         </div>
       </div>
-
-      {showPayment && (
-        <PaymentModal
-          total={total}
-          onClose={() => setShowPayment(false)}
-          onPaymentComplete={handlePaymentComplete}
-        />
-      )}
     </div>
   );
 };

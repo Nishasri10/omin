@@ -1,25 +1,23 @@
 {
-  "name": "pos-omnichannel-backend",
+  "name": "retail-pos-backend",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
+  "description": "Retail POS Backend API",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
     "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "express-async-errors": "^3.1.1",
     "helmet": "^7.0.0",
-    "http-errors": "^2.0.0",
-    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "mongoose": "^7.5.0",
-    "redis": "^5.4.0",
-    "socket.io": "^4.7.2",
+    "express-async-errors": "^3.1.1",
+    "http-errors": "^2.0.0",
     "winston": "^3.10.0"
   },
   "devDependencies": {

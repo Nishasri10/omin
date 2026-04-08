@@ -7,19 +7,19 @@ const readCart = () => {
 
 export const getCartItems = () => readCart();
 
-export const addToCart = product => {
+export const addToCart = (product) => {
   const items = readCart();
   const existing = items.find(item => item._id === product._id);
   if (existing) {
-    existing.quantity = (existing.quantity || 1) + 1;
+    existing.quantity = (existing.quantity || 1) + (product.quantity || 1);
   } else {
-    items.push({ ...product, quantity: 1 });
+    items.push({ ...product, quantity: product.quantity || 1 });
   }
   localStorage.setItem(CART_KEY, JSON.stringify(items));
   return items;
 };
 
-export const removeFromCart = productId => {
+export const removeFromCart = (productId) => {
   const items = readCart().filter(item => item._id !== productId);
   localStorage.setItem(CART_KEY, JSON.stringify(items));
   return items;
@@ -36,4 +36,5 @@ export const clearCart = () => {
   return [];
 };
 
-export const getCartTotal = items => items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+export const getCartTotal = (items) => items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+export const getCartCount = () => readCart().reduce((sum, item) => sum + item.quantity, 0);

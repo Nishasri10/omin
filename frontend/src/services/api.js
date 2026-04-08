@@ -1,12 +1,16 @@
-// api.js (updated)
 import axios from 'axios';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Add token to requests if available
-api.interceptors.request.use(config => {
+// Add token to requests
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem('posToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -16,34 +20,44 @@ api.interceptors.request.use(config => {
 
 // Handle response errors
 api.interceptors.response.use(
-  response => response,
-  error => {
+  (response) => response,
+  (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('posToken');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-export const register = async credentials => {
-  const response = await api.post('/auth/register', credentials);
-  return response.data;
-};
-
-export const login = async credentials => {
+// Auth APIs
+export const login = async (credentials) => {
   const response = await api.post('/auth/login', credentials);
-  return response.data;
+  return response;
 };
 
-export const fetchProducts = async token => {
+export const register = async (userData) => {
+  const response = await api.post('/auth/register', userData);
+  return response;
+};
+
+// Product APIs
+export const fetchProducts = async () => {
   const response = await api.get('/products');
-  return response.data;
+  return response;
 };
 
-export const fetchOrders = async token => {
+// Order APIs
+export const fetchOrders = async () => {
   const response = await api.get('/orders');
-  return response.data;
+  return response;
+};
+
+// Dashboard APIs
+export const fetchDashboardStats = async () => {
+  const response = await api.get('/dashboard/stats');
+  return response;
 };
 
 export default api;
