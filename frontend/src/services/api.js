@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -43,14 +41,29 @@ export const register = async (userData) => {
 };
 
 // Product APIs
-export const fetchProducts = async () => {
-  const response = await api.get('/products');
+export const fetchProducts = async (params) => {
+  const response = await api.get('/products', { params });
+  return response;
+};
+
+export const fetchProductById = async (id) => {
+  const response = await api.get(`/products/${id}`);
+  return response;
+};
+
+export const searchProducts = async (query) => {
+  const response = await api.get('/products/search', { params: query });
   return response;
 };
 
 // Order APIs
+export const createOrder = async (orderData) => {
+  const response = await api.post('/orders', orderData);
+  return response;
+};
+
 export const fetchOrders = async () => {
-  const response = await api.get('/orders');
+  const response = await api.get('/orders/my-orders');
   return response;
 };
 

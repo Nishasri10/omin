@@ -9,7 +9,7 @@ export const getWishlistItems = () => readWishlist();
 
 export const addToWishlist = (product) => {
   const items = readWishlist();
-  if (!items.find(item => item._id === product._id)) {
+  if (!items.find(item => item.id === product.id)) {
     items.push(product);
     localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
   }
@@ -17,9 +17,9 @@ export const addToWishlist = (product) => {
 };
 
 export const removeFromWishlist = (productId) => {
-  const items = readWishlist().filter(item => item._id !== productId);
+  const items = readWishlist().filter(item => item.id !== productId);
   localStorage.setItem(WISHLIST_KEY, JSON.stringify(items));
   return items;
 };
 
-export const isInWishlist = (productId) => readWishlist().some(item => item._id === productId);
+export const isInWishlist = (productId) => readWishlist().some(item => item.id === productId);
